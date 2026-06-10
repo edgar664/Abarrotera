@@ -1,0 +1,243 @@
+generator client {
+  provider = "prisma-client"
+  output   = "../generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+  schemas = ["inventario", "contact", "contabilidad", "colaboradores", "ventas", "usuarios"]
+}
+
+
+
+/// This model contains row level security and requires additional setup for migrations. Visit https://pris.ly/d/row-level-security for more info.
+model cliente {
+  id_cliente BigInt  @id @default(autoincrement())
+  nombre     String
+  tipo       String
+  telefono   String?
+  rfc        String?
+  venta      venta[]
+
+  created_at DateTime @default(now()) @db.Timestamp(6)
+  updated_at DateTime @updatedAt @db.Timestamp(6)
+  deleted_at DateTime? @db.Timestamp(6)
+  deleted    Boolean  @default(false)
+
+  @@schema("contact")
+  @@index([rfc], name: "idx_cliente_rfc")
+}
+
+/// This model contains row level security and requires additional setup for migrations. Visit https://pris.ly/d/row-level-security for more info.
+model corte_caja {
+  id_corte            BigInt    @id @default(autoincrement())
+  id_turno            BigInt?
+  id_autoriza         BigInt?
+  fecha_hora          DateTime  @db.Timestamp(6)
+  total_transacciones Int
+  total_bruto         Decimal   @db.Decimal
+  total_cambio        Decimal   @db.Decimal
+  total_neto          Decimal   @db.Decimal
+  ventas_menudeo      Decimal   @db.Decimal
+  ventas_mayoreo      Decimal   @db.Decimal
+  ahorro_mayoreo      Decimal   @db.Decimal
+  empleado            empleado? @relation(fields: [id_autoriza], references: [id_empleado], onDelete: NoAction, onUpdate: NoAction)
+  turno               turno?    @relation(fields: [id_turno], references: [id_turno], onDelete: NoAction, onUpdate: NoAction)
+
+  created_at DateTime @default(now()) @db.Timestamp(6)
+  updated_at DateTime @updatedAt @db.Timestamp(6)
+  deleted_at DateTime? @db.Timestamp(6)
+  deleted    Boolean  @default(false)
+
+  @@schema("contabilidad")
+  @@index([fecha_hora], name: "idx_corte_caja_fecha_hora")
+}
+
+model empleado {
+  id_empleado BigInt        @id @default(autoincrement())
+  nombre      String
+  rol         String
+  pin_acceso  String
+  activo      Boolean
+  
+  corte_caja  corte_caja[]
+  linea_venta linea_venta[]
+  turno       turno[]
+  
+  usuarios    usuarios?     
+
+  created_at  DateTime      @default(now()) @db.Timestamp(6)
+  updated_at  DateTime      @updatedAt @db.Timestamp(6)
+  deleted_at  DateTime?     @db.Timestamp(6)
+  deleted     Boolean       @default(false)
+
+  @@schema("colaboradores")
+  @@index([nombre], name: "idx_empleado_nombre")
+}
+
+model usuarios {
+  id          BigInt    @id @default(autoincrement())
+  name        String
+  email       String    @unique
+  password    String
+  
+  id_empleado BigInt?   @unique 
+  empleado    empleado? @relation(fields: [id_empleado], references: [id_empleado], onDelete: NoAction, onUpdate: NoAction)
+
+  created_at  DateTime  @default(now()) @db.Timestamp(6)
+  updated_at  DateTime  @updatedAt @db.Timestamp(6)
+  deleted_at  DateTime? @db.Timestamp(6)
+  deleted     Boolean   @default(false)
+
+  @@schema("usuarios") 
+  @@index([email], name: "idx_user_email")
+}
+
+/// This model contains row level security and requires additional setup for migrations. Visit https://pris.ly/d/row-level-security for more info.
+model inventario {
+  id_inventario        BigInt    @id @default(autoincrement())
+  id_producto          BigInt?
+  stock_actual         Int
+  stock_minimo         Int
+  ultima_actualizacion DateTime  @db.Timestamp(6)
+  producto             producto? @relation(fields: [id_producto], references: [id_producto], onDelete: NoAction, onUpdate: NoAction)
+
+  created_at DateTime @default(now()) @db.Timestamp(6)
+  updated_at DateTime @updatedAt @db.Timestamp(6)
+  deleted_at DateTime? @db.Timestamp(6)
+  deleted    Boolean  @default(false)
+
+  @@schema("inventario")
+  @@index([id_producto], name: "idx_inventario_id_producto")
+}
+
+/// This model contains row level security and requires additional setup for migrations. Visit https://pris.ly/d/row-level-security for more info.
+model linea_venta {
+  id_linea          BigInt    @id @default(autoincrement())
+  id_venta          BigInt?
+  id_producto       BigInt?
+  cantidad          Int
+  precio_unitario   Decimal   @db.Decimal
+  subtotal_linea    Decimal   @db.Decimal
+  estatus           String
+  cancelada_por     BigInt?
+  fecha_cancelacion DateTime? @db.Timestamp(6)
+  empleado          empleado? @relation(fields: [cancelada_por], references: [id_empleado], onDelete: NoAction, onUpdate: NoAction)
+  producto          producto? @relation(fields: [id_producto], references: [id_producto], onDelete: NoAction, onUpdate: NoAction)
+  venta             venta?    @relation(fields: [id_venta], references: [id_venta], onDelete: NoAction, onUpdate: NoAction)
+
+  created_at DateTime @default(now()) @db.Timestamp(6)
+  updated_at DateTime @updatedAt @db.Timestamp(6)
+  deleted_at DateTime? @db.Timestamp(6)
+  deleted    Boolean  @default(false)
+
+  @@schema("ventas")
+  @@index([id_venta], name: "idx_linea_venta_id_venta")
+}
+
+/// This model contains row level security and requires additional setup for migrations. Visit https://pris.ly/d/row-level-security for more info.
+model lista_precio {
+  id_lista      BigInt  @id @default(autoincrement())
+  canal         String
+  descuento_pct Decimal @db.Decimal
+  activa        Boolean
+
+  created_at DateTime @default(now()) @db.Timestamp(6)
+  updated_at DateTime @updatedAt @db.Timestamp(6)
+  deleted_at DateTime? @db.Timestamp(6)
+  deleted    Boolean  @default(false)
+
+  @@schema("contabilidad")
+  @@index([canal], name: "idx_lista_precio_canal")
+}
+
+/// This model contains row level security and requires additional setup for migrations. Visit https://pris.ly/d/row-level-security for more info.
+model movimiento_stock {
+  id_movimiento    BigInt    @id @default(autoincrement())
+  id_producto      BigInt?
+  id_venta         BigInt?
+  tipo             String
+  cantidad         Int
+  stock_resultante Int
+  fecha            DateTime  @db.Timestamp(6)
+  producto         producto? @relation(fields: [id_producto], references: [id_producto], onDelete: NoAction, onUpdate: NoAction)
+  venta            venta?    @relation(fields: [id_venta], references: [id_venta], onDelete: NoAction, onUpdate: NoAction)
+
+  created_at DateTime @default(now()) @db.Timestamp(6)
+  updated_at DateTime @updatedAt @db.Timestamp(6)
+  deleted_at DateTime? @db.Timestamp(6)
+  deleted    Boolean  @default(false)
+
+  @@schema("inventario")
+  @@index([id_producto], name: "idx_movimiento_stock_id_producto")
+}
+
+/// This model contains row level security and requires additional setup for migrations. Visit https://pris.ly/d/row-level-security for more info.
+model producto {
+  id_producto           BigInt             @id @default(autoincrement())
+  codigo                String
+  nombre                String
+  categoria             String
+  unidad_medida         String
+  precio_menudeo        Decimal            @db.Decimal
+  descuento_mayoreo_pct Decimal            @db.Decimal
+  activo                Boolean
+  inventario            inventario[]
+  linea_venta           linea_venta[]
+  movimiento_stock      movimiento_stock[]
+
+  created_at DateTime @default(now()) @db.Timestamp(6)
+  updated_at DateTime @updatedAt @db.Timestamp(6)
+  deleted_at DateTime? @db.Timestamp(6)
+  deleted    Boolean  @default(false)
+
+  @@schema("inventario")
+  @@index([codigo], name: "idx_producto_codigo")
+}
+
+/// This model contains row level security and requires additional setup for migrations. Visit https://pris.ly/d/row-level-security for more info.
+model turno {
+  id_turno    BigInt       @id @default(autoincrement())
+  id_empleado BigInt?
+  hora_inicio DateTime     @db.Timestamp(6)
+  hora_fin    DateTime?    @db.Timestamp(6)
+  estatus     String
+  corte_caja  corte_caja[]
+  empleado    empleado?    @relation(fields: [id_empleado], references: [id_empleado], onDelete: NoAction, onUpdate: NoAction)
+  venta       venta[]
+
+  created_at DateTime @default(now()) @db.Timestamp(6)
+  updated_at DateTime @updatedAt @db.Timestamp(6)
+  deleted_at DateTime? @db.Timestamp(6)
+  deleted    Boolean  @default(false)
+
+  @@schema("colaboradores")
+  @@index([id_empleado], name: "idx_turno_id_empleado")
+}
+
+/// This model contains row level security and requires additional setup for migrations. Visit https://pris.ly/d/row-level-security for more info.
+model venta {
+  id_venta         BigInt             @id @default(autoincrement())
+  folio            String
+  id_turno         BigInt?
+  id_cliente       BigInt?
+  fecha_hora       DateTime           @db.Timestamp(6)
+  canal            String
+  subtotal         Decimal            @db.Decimal
+  monto_pagado     Decimal            @db.Decimal
+  cambio_entregado Decimal            @db.Decimal
+  metodo_pago      String
+  estatus          String
+  linea_venta      linea_venta[]
+  movimiento_stock movimiento_stock[]
+  cliente          cliente?           @relation(fields: [id_cliente], references: [id_cliente], onDelete: NoAction, onUpdate: NoAction)
+  turno            turno?             @relation(fields: [id_turno], references: [id_turno], onDelete: NoAction, onUpdate: NoAction)
+
+  created_at DateTime @default(now()) @db.Timestamp(6)
+  updated_at DateTime @updatedAt @db.Timestamp(6)
+  deleted_at DateTime? @db.Timestamp(6)
+  deleted    Boolean  @default(false)
+
+  @@schema("ventas")
+  @@index([id_venta], name: "idx_venta_id_venta")
+}
