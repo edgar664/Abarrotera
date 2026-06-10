@@ -1,0 +1,33 @@
+openapi: 3.0.3
+info:
+  title: API de Ejemplo NestJS
+  description: Documentación de los endpoints del AppController
+  version: 1.0.0
+servers:
+  - url: http://localhost:3000
+    description: Servidor de desarrollo local
+paths:
+  /:
+    get:
+      summary: Obtener saludo
+      operationId: getHello
+      responses:
+        '200':
+          description: Saludo retornado con éxito
+          content:
+            text/plain:
+              schema:
+                type: string
+                example: Hello World!
+  /health:
+    get:
+      summary: Verificar estado de salud de la aplicación
+      operationId: getHealth
+      responses:
+        '200':
+          description: Estado de salud retornado con éxito
+          content:
+            text/plain:
+              schema:
+                type: string
+                example: OK
